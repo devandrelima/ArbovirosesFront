@@ -85,7 +85,7 @@ const DashboardLira: React.FC = () => {
       <Breadcrumb pageName="Dashboard LIRA" />
       <div className="flex flex-col gap-6">
         {/* Filter Controls */}
-        <div className="rounded-sm border border-stroke bg-white px-5 pt-6 pb-2.5 shadow-default dark:border-strokedark dark:bg-boxdark sm:px-7.5">
+        <div className="sticky top-[60px] z-99 rounded-sm border border-stroke bg-white px-5 pt-6 pb-2.5 shadow-default dark:border-strokedark dark:bg-boxdark sm:px-7.5">
           <div className="flex flex-col gap-4 mb-6 xl:flex-row xl:justify-between xl:items-center">
             <div>
               <h4 className="text-xl font-semibold text-black dark:text-white">
