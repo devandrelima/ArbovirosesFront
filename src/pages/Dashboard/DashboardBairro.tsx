@@ -92,7 +92,7 @@ const DashboardBairro: React.FC = () => {
 
   return (
     <DefaultLayout>
-      <div className='mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between rounded-lg bg-white dark:bg-boxdark-2 p-4 shadow-md'>
+      <div className='sticky top-[60px] z-99 mb-6 flex flex-col gap-3 rounded-lg bg-white p-4 shadow-md dark:bg-boxdark-2 sm:flex-row sm:items-center sm:justify-between'>
         <div>
           <nav>
             <ol className="flex items-center gap-2">

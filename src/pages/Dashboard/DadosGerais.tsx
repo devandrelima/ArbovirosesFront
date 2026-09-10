@@ -243,7 +243,7 @@ const App: React.FC = () => {
 
   return (
     <DefaultLayout>
-      <div className='flex flex-wrap justify-end gap-x-2 gap-y-2 items-end'>
+      <div className='sticky top-[60px] z-99 mb-6 flex flex-wrap items-end justify-end gap-x-2 gap-y-2 rounded-sm border border-stroke bg-white p-4 shadow-default dark:border-strokedark dark:bg-boxdark'>
         <BairroSelector
           bairroSelected=""
           setBairroSelected={handleBairroChange}
