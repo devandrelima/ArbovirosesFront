@@ -1,5 +1,6 @@
 import { NeighborhoodInfo } from "../Entity/NeighborhoodInfo";
 import { useNavigate } from "react-router-dom";
+import { useEffect, useState } from "react";
 
 interface BaseTableProps {
   neighborhoodData: NeighborhoodInfo[]
@@ -7,9 +8,23 @@ interface BaseTableProps {
 
 const BaseTable: React.FC<BaseTableProps> = ({neighborhoodData}) => {
   const navigate = useNavigate();
+  const [rowsPerPage, setRowsPerPage] = useState<5 | 10 | 'all'>(5);
+  const [currentPage, setCurrentPage] = useState(1);
+  const validNeighborhoodData = Array.isArray(neighborhoodData) ? neighborhoodData : [];
+
+  const totalPages = rowsPerPage === 'all'
+    ? 1
+    : Math.max(1, Math.ceil(validNeighborhoodData.length / rowsPerPage));
+  const visibleNeighborhoods = rowsPerPage === 'all'
+    ? validNeighborhoodData
+    : validNeighborhoodData.slice((currentPage - 1) * rowsPerPage, currentPage * rowsPerPage);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [neighborhoodData]);
 
   const irParaDashboardBairro = (nameBairro: String) => {
-    const bairros = neighborhoodData.map((n) => n.nomeBairro).filter(Boolean).sort();
+    const bairros = validNeighborhoodData.map((n) => n.nomeBairro).filter(Boolean).sort();
     navigate("/dashboard/bairro", { state: { bairro: nameBairro, bairros } });
   };
 
@@ -58,8 +73,8 @@ const BaseTable: React.FC<BaseTableProps> = ({neighborhoodData}) => {
             </tr>
           </thead>
           <tbody>
-            {neighborhoodData.map((neighborhoodItem, key) => (
-              <tr key={`${neighborhoodItem.nomeBairro}-${key}`}>
+            {visibleNeighborhoods.map((neighborhoodItem, key) => (
+              <tr key={`${neighborhoodItem.nomeBairro}-${(currentPage - 1) * (rowsPerPage === 'all' ? 0 : rowsPerPage) + key}`}>
                 <td className="border-b border-[#eee] py-5 px-4 pl-9 dark:border-strokedark xl:pl-11">
                   <p 
                     onClick={() => irParaDashboardBairro(neighborhoodItem.nomeBairro || 'Desconhecido')}
@@ -92,6 +107,50 @@ const BaseTable: React.FC<BaseTableProps> = ({neighborhoodData}) => {
             ))}
           </tbody>
         </table>
+      </div>
+      <div className="flex flex-col gap-3 py-4 sm:flex-row sm:items-center sm:justify-between">
+        <label className="flex items-center gap-2 text-sm text-body dark:text-bodydark">
+          Exibir
+          <select
+            value={rowsPerPage}
+            onChange={(event) => {
+              const value = event.target.value;
+              setRowsPerPage(value === 'all' ? 'all' : Number(value) as 5 | 10);
+              setCurrentPage(1);
+            }}
+            className="rounded border border-stroke bg-transparent px-3 py-2 text-black outline-none focus:border-primary dark:border-form-strokedark dark:bg-form-input dark:text-white"
+            aria-label="Quantidade de bairros por página"
+          >
+            <option value={5}>5</option>
+            <option value={10}>10</option>
+            <option value="all">Todos</option>
+          </select>
+          bairros
+        </label>
+
+        {rowsPerPage !== 'all' && totalPages > 1 && (
+          <div className="flex items-center gap-3">
+            <button
+              type="button"
+              onClick={() => setCurrentPage((page) => Math.max(1, page - 1))}
+              disabled={currentPage === 1}
+              className="rounded border border-stroke px-3 py-2 text-sm text-black transition hover:border-primary hover:text-primary disabled:cursor-not-allowed disabled:opacity-50 dark:border-strokedark dark:text-white"
+            >
+              Anterior
+            </button>
+            <span className="text-sm text-body dark:text-bodydark">
+              Página {currentPage} de {totalPages}
+            </span>
+            <button
+              type="button"
+              onClick={() => setCurrentPage((page) => Math.min(totalPages, page + 1))}
+              disabled={currentPage === totalPages}
+              className="rounded border border-stroke px-3 py-2 text-sm text-black transition hover:border-primary hover:text-primary disabled:cursor-not-allowed disabled:opacity-50 dark:border-strokedark dark:text-white"
+            >
+              Próxima
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );

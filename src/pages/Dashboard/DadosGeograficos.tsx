@@ -4,11 +4,13 @@ import HeatMap from '../../components/Maps/HeatMap';
 import AgravoSelector from '../../components/Forms/SelectGroup/AgravoSelector';
 import YearSelector from '../../components/Forms/SelectGroup/YearSelector';
 import { mountNeighborhoodData } from '../../service/components/NeighborhoodInfoTable';
+import getApiData from '../../service/api/fetchApiData';
 
 const App: React.FC = () => {
   const [affectedNeighborhoods, setAffectedNeighborhoods] = useState<any>([])
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
+  const [minYear, setMinYear] = useState<number | undefined>(undefined);
 
   const [agravoSelected, setAgravoSelected] = useState<string>(() => {
     const saved = localStorage.getItem('agravoSelected') || 'dengue';
@@ -51,6 +53,29 @@ const App: React.FC = () => {
     'SAO MANOEL':                [-5.2065, -37.3351],
     'VINGT ROSADO':              [-5.2019, -37.3033],
   };
+
+  useEffect(() => {
+    getApiData('/notifications/min-year')
+      .then(data => {
+        if (data == null) return;
+
+        setMinYear(data);
+      })
+      .catch(() => {});
+  }, []);
+
+  useEffect(() => {
+    getApiData('/notifications/latest-date')
+      .then(data => {
+        const latestDate = data?.[agravoSelected];
+        const latestYear = Number(latestDate?.split('/')[2]);
+
+        if (Number.isInteger(latestYear)) {
+          setYearSelected(String(latestYear));
+        }
+      })
+      .catch(() => {});
+  }, [agravoSelected]);
   
   useEffect(() => {
     const fetchData = async () => {
@@ -100,6 +125,7 @@ const App: React.FC = () => {
         <YearSelector
           yearSelected={yearSelected}
           setYearSelected={setYearSelected}
+          minYear={minYear}
         />
         <AgravoSelector
           agravoSelected={agravoSelected}
