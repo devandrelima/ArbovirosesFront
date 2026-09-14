@@ -60,10 +60,22 @@ const App: React.FC = () => {
         if (data == null) return;
 
         setMinYear(data);
-        setYearSelected((selectedYear) => Number(selectedYear) < data ? String(data) : selectedYear);
       })
       .catch(() => {});
   }, []);
+
+  useEffect(() => {
+    getApiData('/notifications/latest-date')
+      .then(data => {
+        const latestDate = data?.[agravoSelected];
+        const latestYear = Number(latestDate?.split('/')[2]);
+
+        if (Number.isInteger(latestYear)) {
+          setYearSelected(String(latestYear));
+        }
+      })
+      .catch(() => {});
+  }, [agravoSelected]);
   
   useEffect(() => {
     const fetchData = async () => {
