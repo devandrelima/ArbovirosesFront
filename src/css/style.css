@@ -51,6 +51,10 @@
 .apexcharts-text {
   @apply !fill-body dark:!fill-bodydark;
 }
+.apexcharts-text.lira-iip-annotation-label {
+  fill: #ffffff !important;
+  color: #ffffff !important;
+}
 .apexcharts-xcrosshairs {
   @apply !fill-stroke dark:!fill-strokedark;
 }
