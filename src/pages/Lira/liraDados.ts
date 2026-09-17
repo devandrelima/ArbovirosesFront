@@ -13,6 +13,21 @@ export interface DisponibilidadeLira {
   ciclos: number[];
 }
 
+export interface FaixasIip {
+  limiteAlerta: number;
+  limiteRisco: number;
+}
+
+export interface ParametrosLira extends FaixasIip {
+  ano: number;
+  liraNumber: number;
+}
+
+export const FAIXAS_IIP_PADRAO: FaixasIip = {
+  limiteAlerta: 1,
+  limiteRisco: 4,
+};
+
 export const indiceMedido = (valor: number | null | undefined): valor is number =>
   typeof valor === 'number' && Number.isFinite(valor);
 
@@ -36,10 +51,13 @@ export const formatarIndice = (valor: number | null, percentual = false) =>
       }).format(valor)}${percentual ? '%' : ''}`
     : 'Dado não informado';
 
-export const classificarIip = (valor: number | null | undefined): ClassificacaoIip => {
+export const classificarIip = (
+  valor: number | null | undefined,
+  faixas: FaixasIip = FAIXAS_IIP_PADRAO,
+): ClassificacaoIip => {
   if (!indiceMedido(valor)) return 'sem-medicao';
-  if (valor < 1) return 'satisfatorio';
-  if (valor < 4) return 'alerta';
+  if (valor < faixas.limiteAlerta) return 'satisfatorio';
+  if (valor < faixas.limiteRisco) return 'alerta';
   return 'risco';
 };
 
@@ -57,8 +75,18 @@ export const corClassificacaoIip = (classificacao: ClassificacaoIip) => ({
   'sem-medicao': '#94a3b8',
 }[classificacao]);
 
-export const contarBairrosEmRisco = (dados: LiraData[]) =>
-  dados.filter((dado) => classificarIip(dado.indiceInfestacaoPredial) === 'risco').length;
+export const contarBairrosEmRisco = (
+  dados: LiraData[],
+  faixas: FaixasIip = FAIXAS_IIP_PADRAO,
+) => dados.filter((dado) =>
+  classificarIip(dado.indiceInfestacaoPredial, faixas) === 'risco'
+).length;
+
+export const formatarLimiteIip = (valor: number) =>
+  Number.isFinite(valor) ? `${new Intl.NumberFormat('pt-BR', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  }).format(valor)}%` : '—';
 
 export const obterMaiorIndicePredial = (dados: LiraData[]) =>
   dados.reduce<LiraData | null>((maior, atual) => {

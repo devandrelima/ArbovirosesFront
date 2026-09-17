@@ -18,13 +18,15 @@ import { ANO_PADRAO, ANOS_COM_DADOS, rotuloCiclo } from './liraCiclos';
 import {
   classificarIip,
   contarBairrosEmRisco,
+  FAIXAS_IIP_PADRAO,
   formatarIndice,
+  formatarLimiteIip,
   indiceMedido,
   obterMaiorIndicePredial,
   resumirIndices,
   rotuloClassificacaoIip,
 } from './liraDados';
-import type { ClassificacaoIip, DisponibilidadeLira, LiraData } from './liraDados';
+import type { ClassificacaoIip, DisponibilidadeLira, FaixasIip, LiraData, ParametrosLira } from './liraDados';
 
 type ViewMode = 'single' | 'comparison';
 
@@ -95,6 +97,7 @@ const DashboardLira: React.FC = () => {
   const [indiceSelecionado, setIndiceSelecionado] = useState<IndiceLira>('predial');
   const [buscaBairro, setBuscaBairro] = useState('');
   const [mostrarTodos, setMostrarTodos] = useState(false);
+  const [faixasPorCiclo, setFaixasPorCiclo] = useState<Record<number, FaixasIip>>({});
 
   useEffect(() => {
     const carregarDisponibilidade = async () => {
@@ -161,7 +164,31 @@ const DashboardLira: React.FC = () => {
       setError(null);
       try {
         const response = await api.get(`/lira?ano=${year}`);
-        setDadosDoAno(normalizarDados(response.data));
+        const dadosNormalizados = normalizarDados(response.data);
+        setDadosDoAno(dadosNormalizados);
+
+        const ciclosDoAno = [...new Set(dadosNormalizados.map((item) => Number(item.liraNumber ?? 1)))];
+        const faixasPadrao = Object.fromEntries(
+          ciclosDoAno.map((ciclo) => [ciclo, { ...FAIXAS_IIP_PADRAO }])
+        ) as Record<number, FaixasIip>;
+
+        try {
+          const parametrosResponse = await api.get(`/lira/parametros/ano?ano=${year}`);
+          const parametros = (parametrosResponse.data as ParametrosLira[]).reduce<Record<number, FaixasIip>>(
+            (acc, item) => {
+              acc[Number(item.liraNumber)] = {
+                limiteAlerta: Number(item.limiteAlerta),
+                limiteRisco: Number(item.limiteRisco),
+              };
+              return acc;
+            },
+            faixasPadrao,
+          );
+          setFaixasPorCiclo(parametros);
+        } catch (parametrosError) {
+          console.warn('Não foi possível carregar as faixas configuradas; usando os valores padrão.', parametrosError);
+          setFaixasPorCiclo(faixasPadrao);
+        }
       } catch (err) {
         console.error(err);
         setDadosDoAno([]);
@@ -176,9 +203,10 @@ const DashboardLira: React.FC = () => {
 
   const ciclosDisponiveis = disponibilidade.find((item) => item.ano === year)?.ciclos ?? [];
   const dadosDoCiclo = dadosDoAno.filter((item) => (item.liraNumber ?? 1) === liraNumber);
+  const faixasDoCiclo = faixasPorCiclo[liraNumber] ?? FAIXAS_IIP_PADRAO;
   const estatisticas = resumirIndices(dadosDoCiclo);
   const maiorIndice = obterMaiorIndicePredial(dadosDoCiclo);
-  const bairrosEmRisco = contarBairrosEmRisco(dadosDoCiclo);
+  const bairrosEmRisco = contarBairrosEmRisco(dadosDoCiclo, faixasDoCiclo);
 
   const dadosOrdenados = useMemo(() => {
     const termo = buscaBairro.trim().toLocaleLowerCase('pt-BR');
@@ -314,7 +342,7 @@ const DashboardLira: React.FC = () => {
                 <IconAlertTriangle className="mt-0.5 shrink-0" size={22} />
                 <div>
                   <p className="font-semibold">{bairrosEmRisco} {bairrosEmRisco === 1 ? 'bairro está' : 'bairros estão'} na faixa de risco</p>
-                  <p className="mt-1 text-sm">Priorize a análise dos bairros com IIP igual ou superior a 4%.</p>
+                  <p className="mt-1 text-sm">Priorize a análise dos bairros com IIP igual ou superior a {formatarLimiteIip(faixasDoCiclo.limiteRisco)}.</p>
                 </div>
               </div>
             )}
@@ -330,8 +358,8 @@ const DashboardLira: React.FC = () => {
               <StatCard
                 label="Bairros em risco"
                 value={String(bairrosEmRisco)}
-                detail="IIP igual ou superior a 4%"
-                tooltip="Segundo a classificação do Ministério da Saúde, IIP a partir de 4% indica situação de risco."
+                detail={`IIP igual ou superior a ${formatarLimiteIip(faixasDoCiclo.limiteRisco)}`}
+                tooltip={`O limite de risco deste ciclo foi definido pela equipe de saúde no carregamento dos dados: ${formatarLimiteIip(faixasDoCiclo.limiteRisco)}.`}
                 icon={<IconAlertTriangle size={23} />}
                 emphasis={bairrosEmRisco > 0 ? 'danger' : 'neutral'}
               />
@@ -341,7 +369,7 @@ const DashboardLira: React.FC = () => {
                 detail={maiorIndice?.bairro ?? 'Sem bairro identificado'}
                 tooltip="Maior percentual de imóveis com presença do mosquito entre os bairros medidos neste ciclo."
                 icon={<IconMapPin size={23} />}
-                emphasis={classificarIip(maiorIndice?.indiceInfestacaoPredial) === 'risco' ? 'danger' : 'warning'}
+                emphasis={classificarIip(maiorIndice?.indiceInfestacaoPredial, faixasDoCiclo) === 'risco' ? 'danger' : 'warning'}
               />
               <StatCard
                 label="IIP médio"
@@ -431,14 +459,14 @@ const DashboardLira: React.FC = () => {
               {indiceSelecionado === 'predial' && (
                 <div className="mt-4 flex flex-wrap items-center gap-x-5 gap-y-2 text-xs text-gray-600 dark:text-gray-300">
                   <span className="font-medium">Classificação do IIP:</span>
-                  <span><span className="mr-1.5 inline-block h-2.5 w-2.5 rounded-full bg-green-600" />Satisfatório: abaixo de 1%</span>
-                  <span><span className="mr-1.5 inline-block h-2.5 w-2.5 rounded-full bg-amber-600" />Alerta: de 1% a 3,9%</span>
-                  <span><span className="mr-1.5 inline-block h-2.5 w-2.5 rounded-full bg-red-600" />Risco: a partir de 4%</span>
+                  <span><span className="mr-1.5 inline-block h-2.5 w-2.5 rounded-full bg-green-600" />Satisfatório: abaixo de {formatarLimiteIip(faixasDoCiclo.limiteAlerta)}</span>
+                  <span><span className="mr-1.5 inline-block h-2.5 w-2.5 rounded-full bg-amber-600" />Alerta: de {formatarLimiteIip(faixasDoCiclo.limiteAlerta)} até abaixo de {formatarLimiteIip(faixasDoCiclo.limiteRisco)}</span>
+                  <span><span className="mr-1.5 inline-block h-2.5 w-2.5 rounded-full bg-red-600" />Risco: a partir de {formatarLimiteIip(faixasDoCiclo.limiteRisco)}</span>
                 </div>
               )}
 
               <div className="mt-5">
-                <ChartLiraPorBairro data={dadosGrafico} indice={indiceSelecionado} />
+                <ChartLiraPorBairro data={dadosGrafico} indice={indiceSelecionado} faixas={faixasDoCiclo} />
               </div>
 
               {dadosOrdenados.length > 10 && (
@@ -470,7 +498,7 @@ const DashboardLira: React.FC = () => {
                   </thead>
                   <tbody className="divide-y divide-stroke dark:divide-strokedark">
                     {dadosOrdenados.map((item, index) => {
-                      const classificacao = classificarIip(item.indiceInfestacaoPredial);
+                      const classificacao = classificarIip(item.indiceInfestacaoPredial, faixasDoCiclo);
                       return (
                         <tr key={`${item.bairro}-${index}`} className="hover:bg-gray-50 dark:hover:bg-gray-800/50">
                           <td className="px-5 py-3 text-gray-500 dark:text-gray-400">{index + 1}º</td>
@@ -495,7 +523,7 @@ const DashboardLira: React.FC = () => {
               </div>
               <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">Acompanhe se a infestação média aumentou ou diminuiu entre os levantamentos.</p>
               <div className="mt-5">
-                <ChartLiraEvolucao data={dadosDoAno} ciclos={ciclosDisponiveis} />
+                <ChartLiraEvolucao data={dadosDoAno} ciclos={ciclosDisponiveis} faixasPorCiclo={faixasPorCiclo} />
               </div>
             </section>
 
@@ -503,7 +531,8 @@ const DashboardLira: React.FC = () => {
               {ciclosDisponiveis.map((ciclo) => {
                 const dados = dadosDoAno.filter((item) => (item.liraNumber ?? 1) === ciclo);
                 const resumo = resumirIndices(dados);
-                const risco = contarBairrosEmRisco(dados);
+                const faixas = faixasPorCiclo[ciclo] ?? FAIXAS_IIP_PADRAO;
+                const risco = contarBairrosEmRisco(dados, faixas);
                 return (
                   <article key={ciclo} className="rounded-lg border border-stroke bg-white p-5 shadow-default dark:border-strokedark dark:bg-boxdark">
                     <div className="flex items-start justify-between gap-3">

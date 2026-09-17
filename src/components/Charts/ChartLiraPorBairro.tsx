@@ -8,16 +8,17 @@ import {
   formatarIndice,
   indiceMedido,
 } from '../../pages/Lira/liraDados';
-import type { LiraData } from '../../pages/Lira/liraDados';
+import type { FaixasIip, LiraData } from '../../pages/Lira/liraDados';
 
 export type IndiceLira = 'predial' | 'breteau';
 
 interface ChartLiraPorBairroProps {
   data: LiraData[];
   indice: IndiceLira;
+  faixas: FaixasIip;
 }
 
-const ChartLiraPorBairro: React.FC<ChartLiraPorBairroProps> = ({ data, indice }) => {
+const ChartLiraPorBairro: React.FC<ChartLiraPorBairroProps> = ({ data, indice, faixas }) => {
   const obterValor = (dado: LiraData) =>
     indice === 'predial' ? dado.indiceInfestacaoPredial : dado.indiceBreteau;
 
@@ -46,7 +47,7 @@ const ChartLiraPorBairro: React.FC<ChartLiraPorBairroProps> = ({ data, indice })
       },
     },
     colors: indice === 'predial'
-      ? dadosOrdenados.map((dado) => corClassificacaoIip(classificarIip(dado.indiceInfestacaoPredial)))
+      ? dadosOrdenados.map((dado) => corClassificacaoIip(classificarIip(dado.indiceInfestacaoPredial, faixas)))
       : ['#3c50e0'],
     dataLabels: {
       enabled: true,
@@ -74,7 +75,7 @@ const ChartLiraPorBairro: React.FC<ChartLiraPorBairroProps> = ({ data, indice })
     annotations: indice === 'predial' ? {
       xaxis: [
         {
-          x: 1,
+          x: faixas.limiteAlerta,
           borderColor: '#d97706',
           strokeDashArray: 4,
           label: {
@@ -88,7 +89,7 @@ const ChartLiraPorBairro: React.FC<ChartLiraPorBairroProps> = ({ data, indice })
           },
         },
         {
-          x: 4,
+          x: faixas.limiteRisco,
           borderColor: '#dc2626',
           strokeDashArray: 4,
           label: {

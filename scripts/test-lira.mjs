@@ -64,6 +64,15 @@ test('classifica o IIP nas faixas oficiais', () => {
   assert.equal(classificarIip(null), 'sem-medicao');
 });
 
+test('classifica o IIP com faixas definidas pela equipe de saúde', () => {
+  const faixas = { limiteAlerta: 2, limiteRisco: 6 };
+  assert.equal(classificarIip(1.99, faixas), 'satisfatorio');
+  assert.equal(classificarIip(2, faixas), 'alerta');
+  assert.equal(classificarIip(5.99, faixas), 'alerta');
+  assert.equal(classificarIip(6, faixas), 'risco');
+  assert.equal(contarBairrosEmRisco([dado(5.9), dado(6), dado(8)], faixas), 2);
+});
+
 test('resume bairros prioritarios sem tratar ausencia como zero', () => {
   const dados = [
     { bairro: 'A', indiceInfestacaoPredial: 4, indiceBreteau: 2 },
