@@ -3,7 +3,9 @@ import Breadcrumb from '../../components/Breadcrumbs/Breadcrumb';
 import DefaultLayout from '../../layout/DefaultLayout';
 import api from '../../service/api/Api';
 import { MAX_UPLOAD_LABEL, validateUploadFile } from '../../common/input/InputSecurity';
+import InfoTooltip from '../../components/InfoTooltip';
 import { ANO_PADRAO, CICLOS_LIRA, rotuloCiclo } from './liraCiclos';
+import { FAIXAS_IIP_PADRAO, formatarLimiteIip } from './liraDados';
 
 const CarregarLira: React.FC = () => {
   const [file, setFile] = useState<File | null>(null);
@@ -13,6 +15,8 @@ const CarregarLira: React.FC = () => {
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [existingDataCount, setExistingDataCount] = useState<number | null>(null);
   const [checkingExistingData, setCheckingExistingData] = useState<boolean>(false);
+  const [limiteAlerta, setLimiteAlerta] = useState<number>(FAIXAS_IIP_PADRAO.limiteAlerta);
+  const [limiteRisco, setLimiteRisco] = useState<number>(FAIXAS_IIP_PADRAO.limiteRisco);
 
   // Check for existing data when year or liraNumber changes
   useEffect(() => {
@@ -21,14 +25,26 @@ const CarregarLira: React.FC = () => {
 
   const checkExistingData = async () => {
     setCheckingExistingData(true);
-    try {
-      const response = await api.get(`/lira/filter?ano=${year}&liraNumber=${liraNumber}`);
-      setExistingDataCount(response.data.length);
-    } catch (error) {
+    const [dadosResult, parametrosResult] = await Promise.allSettled([
+      api.get(`/lira/filter?ano=${year}&liraNumber=${liraNumber}`),
+      api.get(`/lira/parametros?ano=${year}&liraNumber=${liraNumber}`),
+    ]);
+
+    if (dadosResult.status === 'fulfilled') {
+      setExistingDataCount(dadosResult.value.data.length);
+    } else {
       setExistingDataCount(0);
-    } finally {
-      setCheckingExistingData(false);
     }
+
+    if (parametrosResult.status === 'fulfilled') {
+      setLimiteAlerta(Number(parametrosResult.value.data.limiteAlerta));
+      setLimiteRisco(Number(parametrosResult.value.data.limiteRisco));
+    } else {
+      setLimiteAlerta(FAIXAS_IIP_PADRAO.limiteAlerta);
+      setLimiteRisco(FAIXAS_IIP_PADRAO.limiteRisco);
+    }
+
+    setCheckingExistingData(false);
   };
 
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -62,11 +78,19 @@ const CarregarLira: React.FC = () => {
       return;
     }
 
+    if (!Number.isFinite(limiteAlerta) || !Number.isFinite(limiteRisco)
+      || limiteAlerta < 0 || limiteRisco <= limiteAlerta) {
+      setMessage('Informe faixas válidas: o início do risco deve ser maior que o início do alerta.');
+      return;
+    }
+
     setIsLoading(true);
     const formData = new FormData();
     formData.append('file', file);
     formData.append('ano', year.toString());
     formData.append('liraNumber', liraNumber.toString());
+    formData.append('limiteAlerta', limiteAlerta.toString());
+    formData.append('limiteRisco', limiteRisco.toString());
 
     try {
       const response = await api.post('/lira/upload', formData, {
@@ -84,7 +108,7 @@ const CarregarLira: React.FC = () => {
       const alerta = qtd !== 30
         ? ` ⚠️ Esperado 30 bairros, vieram ${qtd} — confira o arquivo.`
         : '';
-      setMessage(`Arquivo LIRA ciclo ${liraNumber}/${year} enviado! ${qtd} registros.${alerta}${overwriteMessage}`);
+      setMessage(`Arquivo LIRA ciclo ${liraNumber}/${year} enviado! ${qtd} registros. Faixas salvas: alerta em ${formatarLimiteIip(limiteAlerta)} e risco em ${formatarLimiteIip(limiteRisco)}.${alerta}${overwriteMessage}`);
       
       setFile(null);
       setExistingDataCount(response.data.length); // Update with new count
@@ -94,7 +118,7 @@ const CarregarLira: React.FC = () => {
       if (fileInput) fileInput.value = '';
     } catch (error) {
       console.error('Erro ao enviar o arquivo LIRA:', error);
-      setMessage('Erro ao enviar o arquivo LIRA. Verifique o console para mais detalhes.');
+      setMessage('Não foi possível enviar os dados do LIRA. Confira o arquivo e as faixas informadas e tente novamente.');
     } finally {
       setIsLoading(false);
     }
@@ -147,6 +171,62 @@ const CarregarLira: React.FC = () => {
                   </select>
                 </div>
               </div>
+
+              <fieldset className="mb-6 rounded-lg border border-stroke bg-gray-50 p-4 dark:border-strokedark dark:bg-gray-800/40">
+                <legend className="px-2 text-sm font-semibold text-black dark:text-white">
+                  Faixas de classificação do IIP
+                </legend>
+                <div className="mb-4 flex items-start gap-2 text-sm text-gray-600 dark:text-gray-300">
+                  <p>Defina a partir de quais valores o ciclo será classificado como alerta ou risco.</p>
+                  <InfoTooltip
+                    text="Os limites ficam vinculados ao ano e ao ciclo enviados. O dashboard usará estes valores nos cards, cores, gráfico e tabela."
+                    label="Como funcionam as faixas do IIP"
+                  />
+                </div>
+                <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                  <div>
+                    <label htmlFor="limite-alerta" className="mb-2 flex items-center gap-1.5 text-sm font-medium text-black dark:text-white">
+                      Início do alerta (%) <span className="text-meta-1">*</span>
+                      <InfoTooltip
+                        text="Valores abaixo deste limite serão classificados como satisfatórios."
+                        label="O que significa início do alerta"
+                      />
+                    </label>
+                    <input
+                      id="limite-alerta"
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      inputMode="decimal"
+                      value={limiteAlerta}
+                      onChange={(event) => setLimiteAlerta(event.target.valueAsNumber)}
+                      className="w-full rounded border-[1.5px] border-stroke bg-white px-4 py-3 text-black outline-none transition focus:border-primary dark:border-form-strokedark dark:bg-form-input dark:text-white dark:focus:border-primary"
+                    />
+                  </div>
+                  <div>
+                    <label htmlFor="limite-risco" className="mb-2 flex items-center gap-1.5 text-sm font-medium text-black dark:text-white">
+                      Início do risco / crítico (%) <span className="text-meta-1">*</span>
+                      <InfoTooltip
+                        text="Valores iguais ou superiores a este limite serão classificados como risco. Este valor deve ser maior que o início do alerta."
+                        label="O que significa início do risco"
+                      />
+                    </label>
+                    <input
+                      id="limite-risco"
+                      type="number"
+                      min="0.01"
+                      step="0.01"
+                      inputMode="decimal"
+                      value={limiteRisco}
+                      onChange={(event) => setLimiteRisco(event.target.valueAsNumber)}
+                      className="w-full rounded border-[1.5px] border-stroke bg-white px-4 py-3 text-black outline-none transition focus:border-primary dark:border-form-strokedark dark:bg-form-input dark:text-white dark:focus:border-primary"
+                    />
+                  </div>
+                </div>
+                <p className="mt-3 text-xs text-gray-500 dark:text-gray-400">
+                  Resultado atual: satisfatório abaixo de {formatarLimiteIip(limiteAlerta)}; alerta de {formatarLimiteIip(limiteAlerta)} até abaixo de {formatarLimiteIip(limiteRisco)}; risco a partir de {formatarLimiteIip(limiteRisco)}.
+                </p>
+              </fieldset>
 
               <div className="mb-6">
                 <label className="mb-2.5 block text-black dark:text-white">
