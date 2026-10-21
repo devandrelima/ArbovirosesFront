@@ -1,51 +1,14 @@
-import {
-  ReactNode,
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   IconAlertTriangle,
-  IconArrowsDiff,
   IconCloudRain,
-  IconDatabase,
-  IconDroplet,
   IconRefresh,
-  IconWind,
 } from '@tabler/icons-react';
 import toast from 'react-hot-toast';
 import Breadcrumb from '../../components/Breadcrumbs/Breadcrumb';
 import { DatePickerBR } from '../../components/Forms/Inputs/DatePickerBR';
 import DefaultLayout from '../../layout/DefaultLayout';
 import api from '../../service/api/Api';
-
-interface WeatherCoverage {
-  start: string;
-  end: string;
-  rows: number;
-  precipitationAvailable: number;
-  precipitationCoveragePct: number;
-  humidityAvailable: number;
-  humidityCoveragePct: number;
-  windAvailable: number;
-  windCoveragePct: number;
-  precipitationCompared: number;
-  precipitationDivergent: number;
-  precipitationAgreementPct: number;
-  humidityCompared: number;
-  humidityDivergent: number;
-  humidityAgreementPct: number;
-  windCompared: number;
-  windDivergent: number;
-  windAgreementPct: number;
-  precipitationDifferenceThresholdMm: number;
-  humidityDifferenceThresholdPctPoints: number;
-  windDifferenceThresholdKmh: number;
-  eligibleNotifications: number;
-  linkedNotifications: number;
-}
 
 type JobState = 'IDLE' | 'RUNNING' | 'COMPLETED' | 'FAILED' | 'SKIPPED';
 type JobMode =
@@ -63,11 +26,8 @@ interface WeatherJobStatus {
   finishedAt: string | null;
   neighborhoods: number;
   rowsProcessed: number;
-  completeRows: number;
-  partialRows: number;
   failedRequests: number;
   linkedNotifications: number;
-  message: string | null;
 }
 
 type ActionKind = 'recent' | 'range' | 'backfill';
@@ -81,11 +41,8 @@ const EMPTY_STATUS: WeatherJobStatus = {
   finishedAt: null,
   neighborhoods: 0,
   rowsProcessed: 0,
-  completeRows: 0,
-  partialRows: 0,
   failedRequests: 0,
   linkedNotifications: 0,
-  message: null,
 };
 
 const STATE_LABEL: Record<JobState, string> = {
@@ -152,20 +109,6 @@ function formatNumber(value: number): string {
   return new Intl.NumberFormat('pt-BR').format(value);
 }
 
-function formatPercentage(value: number): string {
-  return `${new Intl.NumberFormat('pt-BR', {
-    minimumFractionDigits: value % 1 === 0 ? 0 : 1,
-    maximumFractionDigits: 2,
-  }).format(value)}%`;
-}
-
-function formatDecimal(value: number | undefined): string {
-  if (typeof value !== 'number') return '—';
-  return new Intl.NumberFormat('pt-BR', { maximumFractionDigits: 2 }).format(
-    value,
-  );
-}
-
 function resolveApiMessage(error: any, fallback: string): string {
   if (
     Array.isArray(error?.response?.data?.errors) &&
@@ -186,9 +129,6 @@ export default function WeatherData() {
   const initialPeriod = useMemo(defaultPeriod, []);
   const [startDate, setStartDate] = useState(initialPeriod.start);
   const [endDate, setEndDate] = useState(initialPeriod.end);
-  const [appliedStart, setAppliedStart] = useState(initialPeriod.start);
-  const [appliedEnd, setAppliedEnd] = useState(initialPeriod.end);
-  const [coverage, setCoverage] = useState<WeatherCoverage | null>(null);
   const [jobStatus, setJobStatus] = useState<WeatherJobStatus>(EMPTY_STATUS);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -201,35 +141,26 @@ export default function WeatherData() {
   const yesterday = initialPeriod.end;
   const isRunning = jobStatus.state === 'RUNNING';
 
-  const loadDashboard = useCallback(
-    async (background = false) => {
-      if (background) setRefreshing(true);
-      else setLoading(true);
-      setError(null);
+  const loadDashboard = useCallback(async (background = false) => {
+    if (background) setRefreshing(true);
+    else setLoading(true);
+    setError(null);
 
-      try {
-        const [coverageResponse, statusResponse] = await Promise.all([
-          api.get('/weather/coverage', {
-            params: { start: appliedStart, end: appliedEnd },
-          }),
-          api.get('/weather/enrichment/status'),
-        ]);
-        setCoverage(coverageResponse.data?.data ?? null);
-        setJobStatus(statusResponse.data?.data ?? EMPTY_STATUS);
-      } catch (requestError: any) {
-        setError(
-          resolveApiMessage(
-            requestError,
-            'Não foi possível carregar os dados meteorológicos.',
-          ),
-        );
-      } finally {
-        setLoading(false);
-        setRefreshing(false);
-      }
-    },
-    [appliedEnd, appliedStart],
-  );
+    try {
+      const statusResponse = await api.get('/weather/enrichment/status');
+      setJobStatus(statusResponse.data?.data ?? EMPTY_STATUS);
+    } catch (requestError: any) {
+      setError(
+        resolveApiMessage(
+          requestError,
+          'Não foi possível carregar os dados meteorológicos.',
+        ),
+      );
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  }, []);
 
   useEffect(() => {
     loadDashboard();
@@ -253,20 +184,6 @@ export default function WeatherData() {
       return 'A data inicial deve ser anterior ou igual à data final.';
     if (endDate > yesterday) return 'A data final deve ser, no máximo, ontem.';
     return null;
-  }
-
-  function applyPeriod() {
-    const validationError = validatePeriod();
-    if (validationError) {
-      toast.error(validationError);
-      return;
-    }
-    if (startDate === appliedStart && endDate === appliedEnd) {
-      loadDashboard(true);
-      return;
-    }
-    setAppliedStart(startDate);
-    setAppliedEnd(endDate);
   }
 
   function askToRun(action: ActionKind) {
@@ -311,14 +228,6 @@ export default function WeatherData() {
     }
   }
 
-  const linkagePct =
-    coverage && coverage.eligibleNotifications > 0
-      ? Math.round(
-          (coverage.linkedNotifications * 10000) /
-            coverage.eligibleNotifications,
-        ) / 100
-      : null;
-
   return (
     <DefaultLayout>
       <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6">
@@ -335,9 +244,9 @@ export default function WeatherData() {
                 Enriquecimento meteorológico
               </h1>
               <p className="mt-2 max-w-3xl text-sm leading-6 text-gray-600 dark:text-bodydark2">
-                Acompanhe a cobertura de chuva, umidade e vento vinculada às
-                notificações. A rotina diária é automática; use as ações manuais
-                apenas para recompor ou revisar períodos.
+                Acompanhe o processamento dos dados de chuva, umidade e vento
+                vinculados às notificações. A atualização diária é automática;
+                use as ações manuais apenas para recompor ou revisar períodos.
               </p>
             </div>
             <button
@@ -353,132 +262,6 @@ export default function WeatherData() {
               />
               {refreshing ? 'Atualizando...' : 'Atualizar painel'}
             </button>
-          </div>
-
-          <div className="grid grid-cols-1 gap-4 p-5 md:grid-cols-2 xl:grid-cols-4 lg:p-6">
-            <CoverageCard
-              title="Precipitação"
-              value={
-                coverage && coverage.rows > 0
-                  ? coverage.precipitationCoveragePct
-                  : undefined
-              }
-              available={coverage?.precipitationAvailable}
-              total={coverage?.rows}
-              icon={<IconDroplet size={22} aria-hidden="true" />}
-              loading={loading}
-            />
-            <CoverageCard
-              title="Umidade do ar"
-              value={
-                coverage && coverage.rows > 0
-                  ? coverage.humidityCoveragePct
-                  : undefined
-              }
-              available={coverage?.humidityAvailable}
-              total={coverage?.rows}
-              icon={<IconCloudRain size={22} aria-hidden="true" />}
-              loading={loading}
-            />
-            <CoverageCard
-              title="Velocidade do vento"
-              value={
-                coverage && coverage.rows > 0
-                  ? coverage.windCoveragePct
-                  : undefined
-              }
-              available={coverage?.windAvailable}
-              total={coverage?.rows}
-              icon={<IconWind size={22} aria-hidden="true" />}
-              loading={loading}
-            />
-            <CoverageCard
-              title="Notificações vinculadas"
-              value={linkagePct ?? undefined}
-              available={coverage?.linkedNotifications}
-              total={coverage?.eligibleNotifications}
-              icon={<IconDatabase size={22} aria-hidden="true" />}
-              loading={loading}
-              targetLabel="Vínculo atual"
-            />
-          </div>
-
-          <div className="border-t border-stroke p-5 dark:border-strokedark lg:p-6">
-            <div className="mb-4 flex items-start gap-3">
-              <span className="rounded-lg bg-blue-50 p-2 text-primary dark:bg-blue-900/30 dark:text-blue-300">
-                <IconArrowsDiff size={20} aria-hidden="true" />
-              </span>
-              <div>
-                <h2 className="text-lg font-semibold text-black dark:text-white">
-                  Concordância entre Open-Meteo e NASA POWER
-                </h2>
-                <p className="mt-1 text-sm leading-6 text-gray-600 dark:text-bodydark2">
-                  Compara apenas os dias em que as duas fontes possuem valor.
-                  Diferenças acima do limite ficam sinalizadas para auditoria e
-                  não são combinadas por média.
-                </p>
-              </div>
-            </div>
-            <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-              <CoverageCard
-                title="Concordância da precipitação"
-                value={
-                  coverage && coverage.precipitationCompared > 0
-                    ? coverage.precipitationAgreementPct
-                    : undefined
-                }
-                available={
-                  coverage
-                    ? coverage.precipitationCompared -
-                      coverage.precipitationDivergent
-                    : undefined
-                }
-                total={coverage?.precipitationCompared}
-                icon={<IconDroplet size={22} aria-hidden="true" />}
-                loading={loading}
-                targetLabel={`Meta: 90% • limite: ${formatDecimal(
-                  coverage?.precipitationDifferenceThresholdMm,
-                )} mm`}
-              />
-              <CoverageCard
-                title="Concordância da umidade"
-                value={
-                  coverage && coverage.humidityCompared > 0
-                    ? coverage.humidityAgreementPct
-                    : undefined
-                }
-                available={
-                  coverage
-                    ? coverage.humidityCompared - coverage.humidityDivergent
-                    : undefined
-                }
-                total={coverage?.humidityCompared}
-                icon={<IconCloudRain size={22} aria-hidden="true" />}
-                loading={loading}
-                targetLabel={`Meta: 90% • limite: ${formatDecimal(
-                  coverage?.humidityDifferenceThresholdPctPoints,
-                )} p.p.`}
-              />
-              <CoverageCard
-                title="Concordância do vento"
-                value={
-                  coverage && coverage.windCompared > 0
-                    ? coverage.windAgreementPct
-                    : undefined
-                }
-                available={
-                  coverage
-                    ? coverage.windCompared - coverage.windDivergent
-                    : undefined
-                }
-                total={coverage?.windCompared}
-                icon={<IconWind size={22} aria-hidden="true" />}
-                loading={loading}
-                targetLabel={`Meta: 90% • limite: ${formatDecimal(
-                  coverage?.windDifferenceThresholdKmh,
-                )} km/h`}
-              />
-            </div>
           </div>
         </section>
 
@@ -502,11 +285,11 @@ export default function WeatherData() {
           <section className="rounded-2xl border border-stroke bg-white shadow-sm dark:border-strokedark dark:bg-boxdark xl:col-span-3">
             <div className="border-b border-stroke p-5 dark:border-strokedark sm:p-6">
               <h2 className="text-xl font-semibold text-black dark:text-white">
-                Cobertura por período
+                Atualizar um período específico
               </h2>
               <p className="mt-1 text-sm text-gray-600 dark:text-bodydark2">
-                O painel considera um registro diário por bairro entre as datas
-                selecionadas.
+                Escolha as datas que precisam ser consultadas novamente. Os
+                dados serão associados às notificações pela data correspondente.
               </p>
             </div>
             <div className="space-y-5 p-5 sm:p-6">
@@ -534,32 +317,14 @@ export default function WeatherData() {
               <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap">
                 <button
                   type="button"
-                  onClick={applyPeriod}
-                  className="inline-flex min-h-11 items-center justify-center rounded-lg bg-primary px-4 py-2.5 text-sm font-medium text-white transition hover:bg-opacity-90 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 dark:focus:ring-offset-boxdark"
-                >
-                  Consultar cobertura
-                </button>
-                <button
-                  type="button"
                   onClick={() => askToRun('range')}
                   disabled={isRunning || loadingAction !== null}
-                  className="inline-flex min-h-11 items-center justify-center rounded-lg border border-primary px-4 py-2.5 text-sm font-medium text-primary transition hover:bg-primary/5 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 dark:focus:ring-offset-boxdark"
+                  className="inline-flex min-h-11 items-center justify-center rounded-lg bg-primary px-4 py-2.5 text-sm font-medium text-white transition hover:bg-opacity-90 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 dark:focus:ring-offset-boxdark"
                 >
                   {loadingAction === 'range'
                     ? 'Enfileirando...'
                     : 'Reprocessar este período'}
                 </button>
-              </div>
-
-              <div className="rounded-xl border border-blue-100 bg-blue-50 p-4 text-sm text-blue-800 dark:border-blue-800/50 dark:bg-blue-950/30 dark:text-blue-200">
-                <p className="font-semibold">
-                  Período exibido: {formatDate(appliedStart)} a{' '}
-                  {formatDate(appliedEnd)}
-                </p>
-                <p className="mt-1">
-                  Metas: pelo menos 90% de completude e 90% de concordância
-                  entre as fontes dentro dos limites configurados.
-                </p>
               </div>
             </div>
           </section>
@@ -585,63 +350,65 @@ export default function WeatherData() {
                 </div>
               )}
 
-              <dl className="grid grid-cols-2 gap-x-4 gap-y-5 text-sm">
-                <StatusItem
-                  label="Tipo"
-                  value={jobStatus.mode ? MODE_LABEL[jobStatus.mode] : '—'}
+              {loading ? (
+                <div
+                  className="h-48 animate-pulse rounded-xl bg-gray dark:bg-meta-4"
+                  aria-label="Carregando informações da última execução"
                 />
-                <StatusItem
-                  label="Período"
-                  value={
-                    jobStatus.startDate
-                      ? `${formatDate(jobStatus.startDate)} a ${formatDate(
-                          jobStatus.endDate,
-                        )}`
-                      : '—'
-                  }
-                />
-                <StatusItem
-                  label="Início"
-                  value={formatDateTime(jobStatus.startedAt)}
-                />
-                <StatusItem
-                  label="Término"
-                  value={formatDateTime(jobStatus.finishedAt)}
-                />
-                <StatusItem
-                  label="Bairros"
-                  value={formatNumber(jobStatus.neighborhoods)}
-                />
-                <StatusItem
-                  label="Linhas processadas"
-                  value={formatNumber(jobStatus.rowsProcessed)}
-                />
-                <StatusItem
-                  label="Linhas completas"
-                  value={formatNumber(jobStatus.completeRows)}
-                />
-                <StatusItem
-                  label="Linhas parciais"
-                  value={formatNumber(jobStatus.partialRows)}
-                />
-                <StatusItem
-                  label="Falhas de requisição"
-                  value={formatNumber(jobStatus.failedRequests)}
-                />
-                <StatusItem
-                  label="Notificações vinculadas"
-                  value={formatNumber(jobStatus.linkedNotifications)}
-                />
-              </dl>
+              ) : (
+                <dl className="grid grid-cols-2 gap-x-4 gap-y-5 text-sm">
+                  <StatusItem
+                    label="Tipo"
+                    value={jobStatus.mode ? MODE_LABEL[jobStatus.mode] : '—'}
+                  />
+                  <StatusItem
+                    label="Período"
+                    value={
+                      jobStatus.startDate
+                        ? `${formatDate(jobStatus.startDate)} a ${formatDate(
+                            jobStatus.endDate,
+                          )}`
+                        : '—'
+                    }
+                  />
+                  <StatusItem
+                    label="Início"
+                    value={formatDateTime(jobStatus.startedAt)}
+                  />
+                  <StatusItem
+                    label="Término"
+                    value={formatDateTime(jobStatus.finishedAt)}
+                  />
+                  <StatusItem
+                    label="Bairros processados"
+                    value={formatNumber(jobStatus.neighborhoods)}
+                  />
+                  <StatusItem
+                    label="Registros processados"
+                    value={formatNumber(jobStatus.rowsProcessed)}
+                  />
+                  <StatusItem
+                    label="Falhas no processamento"
+                    value={formatNumber(jobStatus.failedRequests)}
+                  />
+                  <StatusItem
+                    label="Notificações atualizadas"
+                    value={formatNumber(jobStatus.linkedNotifications)}
+                  />
+                </dl>
+              )}
 
-              {jobStatus.message && (
+              {jobStatus.state === 'FAILED' && (
                 <div className="mt-5 flex gap-3 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800 dark:border-amber-800/50 dark:bg-amber-950/30 dark:text-amber-200">
                   <IconAlertTriangle
                     className="mt-0.5 shrink-0"
                     size={18}
                     aria-hidden="true"
                   />
-                  <span>{jobStatus.message}</span>
+                  <span>
+                    Não foi possível concluir o processamento. Tente novamente
+                    e, se o problema continuar, consulte o suporte técnico.
+                  </span>
                 </div>
               )}
             </div>
@@ -706,68 +473,6 @@ export default function WeatherData() {
         />
       )}
     </DefaultLayout>
-  );
-}
-
-function CoverageCard({
-  title,
-  value,
-  available,
-  total,
-  icon,
-  loading,
-  targetLabel = 'Meta mínima: 90%',
-}: {
-  title: string;
-  value?: number;
-  available?: number;
-  total?: number;
-  icon: ReactNode;
-  loading: boolean;
-  targetLabel?: string;
-}) {
-  if (loading) {
-    return (
-      <div
-        className="h-40 animate-pulse rounded-xl bg-gray dark:bg-meta-4"
-        aria-label={`Carregando ${title}`}
-      />
-    );
-  }
-
-  const hasData = typeof value === 'number';
-  const meetsTarget = hasData && value >= 90;
-  const tone = !hasData
-    ? 'border-stroke bg-white text-gray-500 dark:border-strokedark dark:bg-boxdark dark:text-bodydark2'
-    : meetsTarget
-    ? 'border-emerald-200 bg-emerald-50/70 text-emerald-700 dark:border-emerald-800/60 dark:bg-emerald-950/25 dark:text-emerald-300'
-    : 'border-amber-200 bg-amber-50/70 text-amber-700 dark:border-amber-800/60 dark:bg-amber-950/25 dark:text-amber-300';
-
-  return (
-    <article className={`rounded-xl border p-5 ${tone}`}>
-      <div className="flex items-center justify-between gap-3">
-        <span className="text-sm font-semibold">{title}</span>
-        <span className="rounded-lg bg-white/70 p-2 shadow-sm dark:bg-black/20">
-          {icon}
-        </span>
-      </div>
-      <p className="mt-4 text-3xl font-semibold text-black dark:text-white">
-        {hasData ? formatPercentage(value) : '—'}
-      </p>
-      <p className="mt-1 text-xs">
-        {typeof available === 'number' && typeof total === 'number'
-          ? `${formatNumber(available)} de ${formatNumber(total)} registros`
-          : 'Dados indisponíveis'}
-      </p>
-      <p className="mt-3 text-xs font-medium">
-        {targetLabel}
-        {hasData && targetLabel.includes('Meta')
-          ? meetsTarget
-            ? ' • atingida'
-            : ' • abaixo da meta'
-          : ''}
-      </p>
-    </article>
   );
 }
 
