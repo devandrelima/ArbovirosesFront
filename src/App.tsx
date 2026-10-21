@@ -16,6 +16,7 @@ import DashboardLira from './pages/Lira/DashboardLira';
 import DeterminantesSociais from './pages/Dashboard/DeterminantesSociais';
 import GerenciarDados from './pages/Dashboard/GerenciarDados';
 import UploadDeterminantes from './pages/Dashboard/UploadDeterminantes';
+import WeatherData from './pages/Weather/WeatherData';
 
 function App() {
   const [loading, setLoading] = useState<boolean>(true);
@@ -63,6 +64,15 @@ function App() {
       <Route
         path="/carregarDados"
         element={<Navigate to="/gerenciarDados" replace />}
+      />
+      <Route
+        path="/dadosMeteorologicos"
+        element={
+          <ProtectedRoute requiredRole="ADMIN">
+            <PageTitle title="Dados meteorológicos" />
+            <WeatherData />
+          </ProtectedRoute>
+        }
       />
       <Route
         path="/dashboard/previsaoCasos"
