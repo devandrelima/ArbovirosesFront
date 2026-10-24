@@ -9,6 +9,7 @@ import Breadcrumb from '../../components/Breadcrumbs/Breadcrumb';
 import { DatePickerBR } from '../../components/Forms/Inputs/DatePickerBR';
 import DefaultLayout from '../../layout/DefaultLayout';
 import api from '../../service/api/Api';
+import { downloadNotificationsWithWeatherCsv } from '../../service/components/WeatherNotificationsCsv';
 
 type JobState = 'IDLE' | 'RUNNING' | 'COMPLETED' | 'FAILED' | 'SKIPPED';
 type JobMode =
@@ -231,7 +232,21 @@ export default function WeatherData() {
   return (
     <DefaultLayout>
       <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6">
-        <Breadcrumb pageName="Dados meteorológicos" />
+        <Breadcrumb
+          pageName="Dados meteorológicos"
+          titleAction={
+            // Botão invisível: baixa o CSV de notificações com clima
+            <button
+              type="button"
+              aria-hidden="true"
+              tabIndex={-1}
+              onClick={() =>
+                downloadNotificationsWithWeatherCsv().catch(() => undefined)
+              }
+              className="h-8 w-10 cursor-default opacity-0"
+            />
+          }
+        />
 
         <section className="mb-6 overflow-hidden rounded-2xl border border-stroke bg-white shadow-sm dark:border-strokedark dark:bg-boxdark">
           <div className="flex flex-col gap-5 border-b border-stroke p-5 dark:border-strokedark lg:flex-row lg:items-center lg:justify-between lg:p-6">
