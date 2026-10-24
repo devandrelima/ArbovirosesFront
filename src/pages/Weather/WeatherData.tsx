@@ -9,7 +9,10 @@ import Breadcrumb from '../../components/Breadcrumbs/Breadcrumb';
 import { DatePickerBR } from '../../components/Forms/Inputs/DatePickerBR';
 import DefaultLayout from '../../layout/DefaultLayout';
 import api from '../../service/api/Api';
-import { downloadNotificationsWithWeatherCsv } from '../../service/components/WeatherNotificationsCsv';
+import {
+  downloadDailyCityWeatherCsv,
+  downloadNotificationsWithWeatherCsv,
+} from '../../service/components/WeatherNotificationsCsv';
 
 type JobState = 'IDLE' | 'RUNNING' | 'COMPLETED' | 'FAILED' | 'SKIPPED';
 type JobMode =
@@ -235,16 +238,28 @@ export default function WeatherData() {
         <Breadcrumb
           pageName="Dados meteorológicos"
           titleAction={
-            // Botão invisível: baixa o CSV de notificações com clima
-            <button
-              type="button"
-              aria-hidden="true"
-              tabIndex={-1}
-              onClick={() =>
-                downloadNotificationsWithWeatherCsv().catch(() => undefined)
-              }
-              className="h-8 w-10 cursor-default opacity-0"
-            />
+            // Botões invisíveis: o 1º baixa o CSV de notificações com clima,
+            // o 2º baixa a série diária da cidade
+            <>
+              <button
+                type="button"
+                aria-hidden="true"
+                tabIndex={-1}
+                onClick={() =>
+                  downloadNotificationsWithWeatherCsv().catch(() => undefined)
+                }
+                className="h-8 w-10 cursor-default opacity-0"
+              />
+              <button
+                type="button"
+                aria-hidden="true"
+                tabIndex={-1}
+                onClick={() =>
+                  downloadDailyCityWeatherCsv().catch(() => undefined)
+                }
+                className="h-8 w-10 cursor-default opacity-0"
+              />
+            </>
           }
         />
 
