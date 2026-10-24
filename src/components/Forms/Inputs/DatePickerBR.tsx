@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useId, useState } from 'react';
 
 interface Props {
     /** Valor interno no formato YYYY-MM-DD (ou vazio). */
@@ -11,6 +11,8 @@ interface Props {
     /** Data máxima, formato YYYY-MM-DD. */
     maxDate?: string;
     className?: string;
+    inputClassName?: string;
+    id?: string;
 }
 
 /** Aplica a máscara dd/mm/aaaa a uma string de dígitos brutos. */
@@ -51,7 +53,12 @@ export function DatePickerBR({
     minDate,
     maxDate,
     className = '',
+    inputClassName = '',
+    id,
 }: Props) {
+    const generatedId = useId();
+    const inputId = id ?? generatedId;
+    const errorId = `${inputId}-error`;
     const [display, setDisplay] = useState(() => isoToMasked(value));
     const [error, setError]     = useState('');
 
@@ -107,25 +114,28 @@ export function DatePickerBR({
     return (
         <div className={`flex flex-col gap-1 ${className}`}>
             {label && (
-                <label className="text-xs font-medium text-gray-500 dark:text-bodydark2 uppercase tracking-wide">
+                <label htmlFor={inputId} className="text-xs font-medium text-gray-500 dark:text-bodydark2 uppercase tracking-wide">
                     {label}
                 </label>
             )}
             <input
+                id={inputId}
                 type="text"
                 inputMode="numeric"
                 value={display}
                 onChange={handleChange}
                 placeholder={placeholder}
                 maxLength={10}
-                className={`rounded border px-3 py-1.5 text-sm w-40 bg-white dark:bg-form-input text-gray-800 dark:text-bodydark placeholder-gray-400 dark:placeholder-bodydark2 focus:outline-none transition ${
+                aria-invalid={Boolean(error)}
+                aria-describedby={error ? errorId : undefined}
+                className={`rounded border px-3 py-1.5 text-sm w-40 bg-white dark:bg-form-input text-gray-800 dark:text-bodydark placeholder-gray-400 dark:placeholder-bodydark2 focus:outline-none transition ${inputClassName} ${
                     error
                         ? 'border-red-400 focus:border-red-500'
                         : 'border-gray-300 dark:border-form-strokedark focus:border-indigo-500'
                 }`}
             />
             {error && (
-                <span className="text-xs text-red-500 dark:text-meta-1">{error}</span>
+                <span id={errorId} className="text-xs text-red-500 dark:text-meta-1">{error}</span>
             )}
         </div>
     );

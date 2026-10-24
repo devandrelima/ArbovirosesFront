@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
-import { IconFileUploadFilled, IconHeartStar } from '@tabler/icons-react';
+import { IconCloudRain, IconFileUploadFilled, IconHeartStar } from '@tabler/icons-react';
 import { useAuth } from '../../contexts/AuthContext';
 
 interface SidebarProps {
@@ -221,6 +221,12 @@ const Sidebar = ({ sidebarOpen, setSidebarOpen, sidebarCollapsed, setSidebarColl
                         <path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5V5h14v14z" fill="" />
                       </svg>
                       {label('Gerir Notificações')}
+                    </NavLink>
+                  </li>
+                  <li>
+                    <NavLink to="/dadosMeteorologicos" title={tip('Dados Meteorológicos')} className={({ isActive }) => navItem(isActive)}>
+                      <IconCloudRain size={18} className="shrink-0" />
+                      {label('Dados Meteorológicos')}
                     </NavLink>
                   </li>
                   <li>
