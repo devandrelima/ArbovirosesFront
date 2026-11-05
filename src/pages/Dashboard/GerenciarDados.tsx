@@ -14,6 +14,7 @@ interface NotificationRecord {
     idNotification: number;
     idAgravo: string | null;
     dataNotification: number | null;
+    dataPrimeiroSintoma: number | null;
     dataNascimento: number | null;
     classificacao: string | null;
     sexo: string | null;
@@ -397,17 +398,17 @@ export default function GerenciarDados() {
                                 </select>
                             </div>
 
-                            {/* Data início */}
+                            {/* Data dos primeiros sintomas — início */}
                             <DatePickerBR
-                                label="Data início"
+                                label="Sintomas a partir de"
                                 value={startDate}
                                 maxDate={endDate || undefined}
                                 onChange={setStartDate}
                             />
 
-                            {/* Data fim */}
+                            {/* Data dos primeiros sintomas — fim */}
                             <DatePickerBR
-                                label="Data fim"
+                                label="Sintomas até"
                                 value={endDate}
                                 minDate={startDate || undefined}
                                 onChange={setEndDate}
@@ -460,7 +461,7 @@ export default function GerenciarDados() {
                                 <thead className="bg-gray-50 dark:bg-meta-4 border-b border-gray-200 dark:border-strokedark">
                                     <tr>
                                         <th className={thCls}>Doença</th>
-                                        <th className={thCls}>Data Notif.</th>
+                                        <th className={thCls}>1º sintoma</th>
                                         <th className={thCls}>Bairro</th>
                                         <th className={thCls}>Sexo</th>
                                         <th className={thCls}>Classificação</th>
@@ -473,7 +474,7 @@ export default function GerenciarDados() {
                                     {data.map(row => (
                                         <tr key={row.idNotification} className="hover:bg-gray-50 dark:hover:bg-meta-4 transition-colors">
                                             <td className={tdCls}>{DOENCA_LABEL[row.idAgravo ?? ''] ?? row.idAgravo ?? '—'}</td>
-                                            <td className={tdCls}>{formatDate(row.dataNotification)}</td>
+                                            <td className={tdCls}>{formatDate(row.dataPrimeiroSintoma)}</td>
                                             <td className={tdCls}>{row.nomeBairro || '—'}</td>
                                             <td className={tdCls}>{row.sexo || '—'}</td>
                                             <td className={tdCls}>{row.classificacao || '—'}</td>
