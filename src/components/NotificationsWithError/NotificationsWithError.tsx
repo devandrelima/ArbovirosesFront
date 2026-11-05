@@ -6,6 +6,7 @@ interface NotificationError {
   idAgravo: string;
   idadePaciente: number;
   dataNotification: string;
+  dataPrimeiroSintoma: string;
   dataNascimento: string | null;
   classificacao: string;
   sexo: string;
@@ -29,7 +30,7 @@ export default async function gerarArquivoComErros() {
     const data = response.data.data;
 
     const headers = [
-      'NU_NOTIFIC', 'ID_AGRAVO', 'DT_NOTIFIC',
+      'NU_NOTIFIC', 'ID_AGRAVO', 'DT_NOTIFIC', 'DT_SIN_PRI',
       'DT_NASC', 'CLASSI_FIN', 'CS_SEXO', 'ID_BAIRRO',
       'NM_BAIRRO', 'EVOLUCAO'
     ];
@@ -40,31 +41,18 @@ export default async function gerarArquivoComErros() {
         item.idNotification,
         item.idAgravo,
         formatarData(item.dataNotification),
+        formatarData(item.dataPrimeiroSintoma),
         formatarData(item.dataNascimento),
         item.classificacao,
         item.sexo,
         item.idBairro, 
         item.nomeBairro, 
         item.evolucao
-      ])
+      ].map(value => value ?? 'DADO NÃO INFORMADO'))
     ];
 
     const wb = XLSX.utils.book_new();
     const ws = XLSX.utils.aoa_to_sheet(worksheetData);
-
-    data.forEach((item, rowIndex) => {
-    const row = rowIndex + 1;
-    Object.entries(item).forEach(([_, value], colIndex) => {
-        if (value === null) {
-        const cellAddress = XLSX.utils.encode_cell({ r: row, c: colIndex });
-        ws[cellAddress] = {
-            t: 's',
-            v: 'DADO NÃO INFORMADO',
-        };
-        }
-    });
-    });
-
 
     XLSX.utils.book_append_sheet(wb, ws, 'Notificações com erro');
     const wbout = XLSX.write(wb, { bookType: 'xlsx', type: 'array', cellStyles: true });

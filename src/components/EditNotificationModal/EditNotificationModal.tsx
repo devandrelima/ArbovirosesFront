@@ -6,6 +6,7 @@ export interface NotificationRecord {
     idNotification: number;
     idAgravo: string | null;
     dataNotification: number | null;
+    dataPrimeiroSintoma: number | null;
     dataNascimento: number | null;
     classificacao: string | null;
     sexo: string | null;
@@ -48,6 +49,7 @@ function epochToInput(epoch: number | null): string {
 export default function EditNotificationModal({ record, onClose, onSaved, isErrorRecord }: Props) {
     const [idAgravo, setIdAgravo] = useState(record.idAgravo ?? '');
     const [dtNotific, setDtNotific] = useState(epochToInput(record.dataNotification));
+    const [dtSinPri, setDtSinPri] = useState(epochToInput(record.dataPrimeiroSintoma));
     const [dtNasc, setDtNasc] = useState(epochToInput(record.dataNascimento));
     const [classiFin, setClassiFin] = useState(record.classificacao ?? '');
     const [csSexo, setCsSexo] = useState(record.sexo ?? '');
@@ -74,6 +76,7 @@ export default function EditNotificationModal({ record, onClose, onSaved, isErro
             await api.put(endpoint, {
                 idAgravo: idAgravo || null,
                 dtNotific: dtNotific || null,
+                dtSinPri: dtSinPri || null,
                 dtNasc: dtNasc || null,
                 classiFin: classiFin || null,
                 csSexo: csSexo || null,
@@ -114,6 +117,10 @@ export default function EditNotificationModal({ record, onClose, onSaved, isErro
                     <div>
                         <label className={labelCls}>Data Notificação (dd/MM/yyyy)</label>
                         <input value={dtNotific} onChange={e => setDtNotific(sanitizeDateBR(e.target.value))} className={inputCls} placeholder="dd/MM/yyyy" inputMode="numeric" maxLength={10} />
+                    </div>
+                    <div>
+                        <label className={labelCls}>Primeiros sintomas (dd/MM/yyyy)</label>
+                        <input value={dtSinPri} onChange={e => setDtSinPri(sanitizeDateBR(e.target.value))} className={inputCls} placeholder="dd/MM/yyyy" inputMode="numeric" maxLength={10} />
                     </div>
                     <div>
                         <label className={labelCls}>Data Nascimento (dd/MM/yyyy)</label>
