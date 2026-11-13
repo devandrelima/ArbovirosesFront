@@ -14,6 +14,7 @@ interface NotificationRecord {
     idNotification: number;
     idAgravo: string | null;
     dataNotification: number | null;
+    dataPrimeiroSintoma: number | null;
     dataNascimento: number | null;
     classificacao: string | null;
     sexo: string | null;
@@ -209,20 +210,22 @@ export default function GerenciarDados() {
         setMeta(null);
     }
 
-    function buildActiveFilters(useCategory: boolean) {
+    function buildActiveFilters(includeFilters: boolean) {
+        if (!includeFilters) return {};
+
         return {
-            category:  useCategory && category  ? category  : undefined,
+            category:  category                 ? category  : undefined,
             idAgravo:  doencaErr                ? doencaErr : undefined,
             startDate: startDate                ? toStartEpoch(startDate) : undefined,
             endDate:   endDate                  ? toEndEpoch(endDate)     : undefined,
         };
     }
 
-    async function handleExportPdf(useCategory: boolean) {
+    async function handleExportPdf(includeFilters: boolean) {
         setPdfLoading(true);
         setPdfError(null);
         try {
-            await downloadErrorsPdfReport(buildActiveFilters(useCategory));
+            await downloadErrorsPdfReport(buildActiveFilters(includeFilters));
             setPdfModalOpen(false);
         } catch (err: any) {
             setPdfError(err?.message ?? 'Erro ao gerar o PDF.');
@@ -244,8 +247,8 @@ export default function GerenciarDados() {
         const parts: string[] = [];
         if (category)  parts.push(`Problema: ${categoryLabel}`);
         if (doencaErr) parts.push(`Doença: ${doencaLabel}`);
-        if (startDate) parts.push(`De: ${isoToBR(startDate)}`);
-        if (endDate)   parts.push(`Até: ${isoToBR(endDate)}`);
+        if (startDate) parts.push(`Sintomas de: ${isoToBR(startDate)}`);
+        if (endDate)   parts.push(`Sintomas até: ${isoToBR(endDate)}`);
         return parts.join(' | ');
     }
 
@@ -397,17 +400,17 @@ export default function GerenciarDados() {
                                 </select>
                             </div>
 
-                            {/* Data início */}
+                            {/* Data dos primeiros sintomas — início */}
                             <DatePickerBR
-                                label="Data início"
+                                label="Sintomas a partir de"
                                 value={startDate}
                                 maxDate={endDate || undefined}
                                 onChange={setStartDate}
                             />
 
-                            {/* Data fim */}
+                            {/* Data dos primeiros sintomas — fim */}
                             <DatePickerBR
-                                label="Data fim"
+                                label="Sintomas até"
                                 value={endDate}
                                 minDate={startDate || undefined}
                                 onChange={setEndDate}
@@ -460,7 +463,7 @@ export default function GerenciarDados() {
                                 <thead className="bg-gray-50 dark:bg-meta-4 border-b border-gray-200 dark:border-strokedark">
                                     <tr>
                                         <th className={thCls}>Doença</th>
-                                        <th className={thCls}>Data Notif.</th>
+                                        <th className={thCls}>1º sintoma</th>
                                         <th className={thCls}>Bairro</th>
                                         <th className={thCls}>Sexo</th>
                                         <th className={thCls}>Classificação</th>
@@ -473,7 +476,7 @@ export default function GerenciarDados() {
                                     {data.map(row => (
                                         <tr key={row.idNotification} className="hover:bg-gray-50 dark:hover:bg-meta-4 transition-colors">
                                             <td className={tdCls}>{DOENCA_LABEL[row.idAgravo ?? ''] ?? row.idAgravo ?? '—'}</td>
-                                            <td className={tdCls}>{formatDate(row.dataNotification)}</td>
+                                            <td className={tdCls}>{formatDate(row.dataPrimeiroSintoma)}</td>
                                             <td className={tdCls}>{row.nomeBairro || '—'}</td>
                                             <td className={tdCls}>{row.sexo || '—'}</td>
                                             <td className={tdCls}>{row.classificacao || '—'}</td>
