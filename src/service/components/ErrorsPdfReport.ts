@@ -23,9 +23,10 @@ export async function downloadErrorsPdfReport(filters: ErrorsReportFilters = {})
     const downloadUrl = window.URL.createObjectURL(blob);
     const link = document.createElement("a");
     link.href = downloadUrl;
+    const hasFilters = Object.values(filters).some(value => value != null && value !== "");
     link.download = filters.category
         ? `erros-${filters.category.toLowerCase()}.pdf`
-        : "erros-todos.pdf";
+        : hasFilters ? "erros-filtrados.pdf" : "erros-todos.pdf";
     document.body.appendChild(link);
     link.click();
     link.remove();
